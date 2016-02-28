@@ -22,6 +22,7 @@ typedef void (^VideoCompletionBlock)(void);
 
 + (instancetype)sharedInstance;
 - (BOOL)startRecording;
+- (BOOL)startRecordingWithView:(UIView*)view;
 - (void)stopRecordingWithCompletion:(VideoCompletionBlock)completionBlock;
 @end
 

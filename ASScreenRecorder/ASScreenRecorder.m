@@ -19,6 +19,7 @@
 @property (strong, nonatomic) NSDictionary *outputBufferPoolAuxAttributes;
 @property (nonatomic) CFTimeInterval firstTimeStamp;
 @property (nonatomic) BOOL isRecording;
+@property (strong, nonatomic) UIView *recordingView;
 @end
 
 @implementation ASScreenRecorder
@@ -77,6 +78,19 @@
 
 - (BOOL)startRecording
 {
+    if (!_isRecording) {
+        [self setUpWriter];
+        _isRecording = (_videoWriter.status == AVAssetWriterStatusWriting);
+        _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(writeVideoFrame)];
+        [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    }
+    return _isRecording;
+}
+
+- (BOOL)startRecordingWithView:(UIView*)view
+{
+    self.recordingView = view;
+    
     if (!_isRecording) {
         [self setUpWriter];
         _isRecording = (_videoWriter.status == AVAssetWriterStatusWriting);
@@ -245,13 +259,35 @@
         }
         // draw each window into the context (other windows include UIKeyboard, UIAlert)
         // FIX: UIKeyboard is currently only rendered correctly in portrait orientation
+        
         dispatch_sync(dispatch_get_main_queue(), ^{
             UIGraphicsPushContext(bitmapContext); {
-                for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-                    [window drawViewHierarchyInRect:CGRectMake(0, 0, _viewSize.width, _viewSize.height) afterScreenUpdates:NO];
+                
+                if (self.recordingView)
+                {
+                    [self.recordingView drawViewHierarchyInRect:CGRectMake(0, 0, _viewSize.width, _viewSize.height) afterScreenUpdates:NO];
                 }
+                else
+                {
+                    for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+                        [window drawViewHierarchyInRect:CGRectMake(0, 0, _viewSize.width, _viewSize.height) afterScreenUpdates:NO];
+                    }
+                }
+                
             } UIGraphicsPopContext();
         });
+        
+        
+        // No specific view version commented out here//
+        /*dispatch_sync(dispatch_get_main_queue(), ^{
+         UIGraphicsPushContext(bitmapContext); {
+         for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
+         [window drawViewHierarchyInRect:CGRectMake(0, 0, _viewSize.width, _viewSize.height) afterScreenUpdates:NO];
+         }
+         } UIGraphicsPopContext();
+         });
+         */
+        
         
         // append pixelBuffer on a async dispatch_queue, the next frame is rendered whilst this one appends
         // must not overwhelm the queue with pixelBuffers, therefore:
